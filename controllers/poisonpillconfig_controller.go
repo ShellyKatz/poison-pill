@@ -19,7 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/shellykatz/poison-pill/metrics"
+	"github.com/medik8s/poison-pill/metrics"
 	"os"
 
 	"github.com/go-logr/logr"
