@@ -20,6 +20,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/medik8s/poison-pill/metrics"
 	"github.com/medik8s/poison-pill/pkg/utils"
 	"os"
 	"strconv"
@@ -113,6 +114,10 @@ func main() {
 	}
 
 	//+kubebuilder:scaffold:builder
+
+
+	// Register Poison Pill specific metrics
+	metrics.InitializePoisonPillMetrics()
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")

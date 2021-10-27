@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/shellykatz/poison-pill/metrics"
 	"os"
 
 	"github.com/go-logr/logr"
@@ -82,6 +83,10 @@ func (r *PoisonPillConfigReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	if err := r.syncConfigDaemonSet(config); err != nil {
 		logger.Error(err, "error syncing DS")
+		return ctrl.Result{}, err
+	}
+
+	if err := metrics.ObserveIsNodeRebootCapableAnnotation(r.Client); err != nil {
 		return ctrl.Result{}, err
 	}
 
