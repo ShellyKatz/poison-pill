@@ -20,6 +20,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/go-logr/logr"
 	"os"
 	"strconv"
 	"time"
@@ -155,8 +156,9 @@ func initPoisonPillManager(mgr manager.Manager) {
 		os.Exit(1)
 	}
 
-	if err := newConfigIfNotExist(mgr.GetClient()); err != nil {
-		setupLog.Error(err, "failed to create a default poison pill config CR")
+	config := New(mgr.GetClient(), ctrl.Log.WithName("default config"))
+	if err = mgr.Add(config); err != nil {
+		setupLog.Error(err, "failed to add config to the manager")
 		os.Exit(1)
 	}
 
@@ -356,4 +358,34 @@ func getDeploymentNamespace() (string, error) {
 		return "", fmt.Errorf("%s must be set", deployNamespaceEnvVar)
 	}
 	return ns, nil
+}
+
+// TODO - move to a different file after it's working and maybe change type name..
+type Config struct {
+	//defaultConfig poisonpillv1alpha1.PoisonPillConfig
+	client client.Client
+	log    logr.Logger
+}
+
+func New(c client.Client, log logr.Logger) *Config {
+	return &Config{
+		client: c,
+		log:    log,
+	}
+}
+
+func (config *Config) Start(ctx context.Context) error {
+	ns, err := getDeploymentNamespace()
+	if err != nil {
+		return errors.Wrap(err, "unable to get the deployment namespace")
+	}
+
+	newConfig := poisonpillv1alpha1.NewDefaultPoisonPillConfig()
+	newConfig.SetNamespace(ns)
+
+	err = config.client.Create(context.Background(), &newConfig, &client.CreateOptions{})
+	if err != nil && !apierrors.IsAlreadyExists(err) {
+		return errors.Wrap(err, "failed to create a default poison pill config CR")
+	}
+	return nil
 }
