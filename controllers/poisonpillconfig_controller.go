@@ -98,7 +98,7 @@ func (r *PoisonPillConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func (r *PoisonPillConfigReconciler) syncConfigDaemonSet(ppc *poisonpillv1alpha1.PoisonPillConfig) error {
 	logger := r.Log.WithName("syncConfigDaemonset")
-	logger.Info("Start to sync config daemonset")
+	r.logOnce("Start to sync config daemonset")
 
 	data := render.MakeRenderData()
 	data.Data["Image"] = os.Getenv("POISON_PILL_IMAGE")
@@ -158,7 +158,7 @@ func (r *PoisonPillConfigReconciler) syncK8sResource(cr *poisonpillv1alpha1.Pois
 
 func (r *PoisonPillConfigReconciler) syncCerts(cr *poisonpillv1alpha1.PoisonPillConfig) error {
 
-	r.Log.Info("Syncing certs")
+	r.logOnce("Syncing certs")
 	// check if certs exists already
 	st := certificates.NewSecretCertStorage(r.Client, r.Log.WithName("SecretCertStorage"), cr.Namespace)
 	pem, _, _, err := st.GetCerts()
@@ -167,7 +167,7 @@ func (r *PoisonPillConfigReconciler) syncCerts(cr *poisonpillv1alpha1.PoisonPill
 		return err
 	}
 	if pem != nil {
-		r.Log.Info("Cert secret already exists")
+		r.logOnce("Cert secret already exists")
 		// TODO check validity: if expired, create new, restart daemonset!
 		return nil
 	}
@@ -186,4 +186,16 @@ func (r *PoisonPillConfigReconciler) syncCerts(cr *poisonpillv1alpha1.PoisonPill
 		return err
 	}
 	return nil
+}
+
+var (
+	logKeys = map[string]bool{}
+)
+
+func (r *PoisonPillConfigReconciler)  logOnce(message string) {
+	if _, ok := logKeys[message]; ok {
+		return
+	}
+	logKeys[message] = true
+	r.Log.Info(message)
 }

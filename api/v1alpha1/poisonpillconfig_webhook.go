@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"fmt"
 	"k8s.io/apimachinery/pkg/runtime"
 	"os"
 	"path/filepath"
@@ -29,6 +30,16 @@ const (
 	WebhookCertDir  = "/apiserver.local.config/certificates"
 	WebhookCertName = "apiserver.crt"
 	WebhookKeyName  = "apiserver.key"
+)
+
+const (
+	ErrLessThan10ms = "can't be less than 10 milliseconds"
+	ErrPeerApiServerTimeout = "PeerApiServerTimeout" + ErrLessThan10ms
+	ErrApiServerTimeout = "ApiServerTimeout" + ErrLessThan10ms
+	ErrPeerDialTimeout = "PeerDialTimeout" +  ErrLessThan10ms
+	ErrPeerRequestTimeout = "PeerRequestTimeout" + ErrLessThan10ms
+	ErrApiCheckInterval = "ApiCheckInterval can't be less than 1 seconds"
+	ErrPeerUpdateInterval = "PeerUpdateInterval can't be less than 10 seconds"
 )
 
 // log is for logging in this package.
@@ -72,16 +83,15 @@ var _ webhook.Validator = &PoisonPillConfig{}
 func (r *PoisonPillConfig) ValidateCreate() error {
 	poisonpillconfiglog.Info("validate create", "name", r.Name)
 
-	// TODO(user): fill in your validation logic upon object creation.
-	return nil
+	return r.ValidateTimes()
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *PoisonPillConfig) ValidateUpdate(old runtime.Object) error {
 	poisonpillconfiglog.Info("validate update", "name", r.Name)
+	poisonpillconfiglog.Info("Shelly's comment", "name", r.Name)
 
-	// TODO(user): fill in your validation logic upon object update.
-	return nil
+	return r.ValidateTimes()
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
@@ -90,4 +100,46 @@ func (r *PoisonPillConfig) ValidateDelete() error {
 
 	// TODO(user): fill in your validation logic upon object deletion.
 	return nil
+}
+
+//PeerApiServerTimeout - 10ms
+//ApiCheckInterval - 1s --> 1000ms
+//PeerUpdateInterval - 10s --> 10000ms
+//ApiServerTimeout - 10ms
+//PeerDialTimeout - 10ms
+//PeerRequestTimeout - 10ms
+
+
+// ValidateTimes validates each time field in the PoisonPillConfig CR doesn't go below the minimum time
+// that was defined to it
+func (r *PoisonPillConfig) ValidateTimes() error {
+	peerApiServerTimeout := r.Spec.PeerApiServerTimeout.Milliseconds()
+	apiServerTimeout := r.Spec.ApiServerTimeout.Milliseconds()
+	peerDialTimeout := r.Spec.PeerDialTimeout.Milliseconds()
+	peerRequestTimeout := r.Spec.PeerRequestTimeout.Milliseconds()
+	apiCheckInterval := r.Spec.ApiCheckInterval.Milliseconds()
+	peerUpdateInterval := r.Spec.PeerUpdateInterval.Milliseconds()
+
+	if peerApiServerTimeout < 10 {
+		LogAndReturnErr(ErrPeerApiServerTimeout, peerApiServerTimeout)
+	} else if apiServerTimeout < 10 {
+		LogAndReturnErr(ErrApiServerTimeout, apiServerTimeout)
+	} else if peerDialTimeout < 10 {
+		LogAndReturnErr(ErrPeerDialTimeout, peerDialTimeout)
+	} else if peerRequestTimeout < 10 {
+		LogAndReturnErr(ErrPeerRequestTimeout, peerRequestTimeout)
+	} else if apiCheckInterval < 1000 {
+		LogAndReturnErr(ErrApiCheckInterval, apiCheckInterval)
+	} else if peerUpdateInterval < 10000 {
+		LogAndReturnErr(ErrPeerUpdateInterval, peerUpdateInterval)
+	}
+	return nil
+}
+
+// LogAndReturnErr logs the time error with the inputTime as value for the user to see what was inserted
+// and then returns the error.
+func LogAndReturnErr(errMessage string, inputTime int64) error {
+	err := fmt.Errorf(errMessage)
+	poisonpillconfiglog.Error(err, errMessage, "time given (in milliseconds) was:", inputTime)
+	return err
 }
