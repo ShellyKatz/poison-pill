@@ -119,7 +119,7 @@ func (r *PoisonPillConfig) ValidateTimes() error {
 	peerRequestTimeout := r.Spec.PeerRequestTimeout.Milliseconds()
 	apiCheckInterval := r.Spec.ApiCheckInterval.Milliseconds()
 	peerUpdateInterval := r.Spec.PeerUpdateInterval.Milliseconds()
-
+	poisonpillconfiglog.Info("shelly's comment!", "peerUpdateInterval", peerUpdateInterval, "apiCheckInterval",apiCheckInterval)
 	if peerApiServerTimeout < 10 {
 		LogAndReturnErr(ErrPeerApiServerTimeout, peerApiServerTimeout)
 	} else if apiServerTimeout < 10 {

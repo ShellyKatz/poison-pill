@@ -110,12 +110,12 @@ func (r *PoisonPillConfigReconciler) syncConfigDaemonSet(ppc *poisonpillv1alpha1
 	}
 	data.Data["WatchdogPath"] = watchdogPath
 
-	data.Data["PeerApiServerTimeout"] = ppc.Spec.PeerApiServerTimeout.Seconds()
-	data.Data["ApiCheckInterval"] = ppc.Spec.ApiCheckInterval.Seconds()
-	data.Data["PeerUpdateInterval"] = ppc.Spec.PeerUpdateInterval.Seconds()
-	data.Data["ApiServerTimeout"] = ppc.Spec.ApiServerTimeout.Seconds()
-	data.Data["PeerDialTimeout"] = ppc.Spec.PeerDialTimeout.Seconds()
-	data.Data["PeerRequestTimeout"] = ppc.Spec.PeerRequestTimeout.Seconds()
+	data.Data["PeerApiServerTimeout"] = ppc.Spec.PeerApiServerTimeout.Milliseconds()
+	data.Data["ApiCheckInterval"] = ppc.Spec.ApiCheckInterval.Milliseconds()
+	data.Data["PeerUpdateInterval"] = ppc.Spec.PeerUpdateInterval.Milliseconds()
+	data.Data["ApiServerTimeout"] = ppc.Spec.ApiServerTimeout.Milliseconds()
+	data.Data["PeerDialTimeout"] = ppc.Spec.PeerDialTimeout.Milliseconds()
+	data.Data["PeerRequestTimeout"] = ppc.Spec.PeerRequestTimeout.Milliseconds()
 	data.Data["MaxApiErrorThreshold"] = ppc.Spec.MaxApiErrorThreshold
 
 	timeToAssumeNodeRebooted := ppc.Spec.SafeTimeToAssumeNodeRebootedSeconds
@@ -192,7 +192,7 @@ var (
 	logKeys = map[string]bool{}
 )
 
-func (r *PoisonPillConfigReconciler)  logOnce(message string) {
+func (r *PoisonPillConfigReconciler) logOnce(message string) {
 	if _, ok := logKeys[message]; ok {
 		return
 	}

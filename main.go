@@ -172,7 +172,7 @@ func initPoisonPillManager(mgr manager.Manager) {
 
 func getDurEnvVarOrDie(varName string) time.Duration {
 	intVar := getIntEnvVarOrDie(varName)
-	return time.Duration(intVar) * time.Second
+	return time.Duration(intVar) * time.Millisecond
 }
 
 func getIntEnvVarOrDie(varName string) int {
@@ -265,7 +265,7 @@ func initPoisonPillAgent(mgr manager.Manager) {
 	}
 
 	// determine safe reboot time
-	timeToAssumeNodeRebooted := getDurEnvVarOrDie("TIME_TO_ASSUME_NODE_REBOOTED")
+	timeToAssumeNodeRebooted := time.Duration(getIntEnvVarOrDie("TIME_TO_ASSUME_NODE_REBOOTED")) * time.Second
 
 	// but the reboot time needs be at least the time we know we need for determining a node issue and trigger the reboot!
 	// 1. time for determing node issue
