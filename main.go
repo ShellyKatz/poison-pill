@@ -113,10 +113,6 @@ func main() {
 		initPoisonPillAgent(mgr)
 	}
 
-	if err = (&poisonpillv1alpha1.PoisonPillConfig{}).SetupWebhookWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create webhook", "webhook", "PoisonPillConfig")
-		os.Exit(1)
-	}
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
@@ -137,6 +133,12 @@ func main() {
 
 func initPoisonPillManager(mgr manager.Manager) {
 	setupLog.Info("Starting as a manager that installs the daemonset")
+
+	if err := (&poisonpillv1alpha1.PoisonPillConfig{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "PoisonPillConfig")
+		os.Exit(1)
+	}
+
 	ns, err := getDeploymentNamespace()
 	if err != nil {
 		setupLog.Error(err, "failed to get deployed namespace from env var")

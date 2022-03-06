@@ -17,16 +17,56 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"fmt"
 	"k8s.io/apimachinery/pkg/runtime"
+	"os"
+	"path/filepath"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
+const (
+	WebhookCertDir  = "/apiserver.local.config/certificates"
+	WebhookCertName = "apiserver.crt"
+	WebhookKeyName  = "apiserver.key"
+)
+
+const (
+	ErrLessThan10ms = "can't be less than 10 milliseconds"
+	ErrPeerApiServerTimeout = "PeerApiServerTimeout" + ErrLessThan10ms
+	ErrApiServerTimeout = "ApiServerTimeout" + ErrLessThan10ms
+	ErrPeerDialTimeout = "PeerDialTimeout" +  ErrLessThan10ms
+	ErrPeerRequestTimeout = "PeerRequestTimeout" + ErrLessThan10ms
+	ErrApiCheckInterval = "ApiCheckInterval can't be less than 1 seconds"
+	ErrPeerUpdateInterval = "PeerUpdateInterval can't be less than 10 seconds"
+)
+
+
 // log is for logging in this package.
 var poisonpillconfiglog = logf.Log.WithName("poisonpillconfig-resource")
 
 func (r *PoisonPillConfig) SetupWebhookWithManager(mgr ctrl.Manager) error {
+
+	// check if OLM injected certs
+	certs := []string{filepath.Join(WebhookCertDir, WebhookCertName), filepath.Join(WebhookCertDir, WebhookKeyName)}
+	certsInjected := true
+	for _, fname := range certs {
+		if _, err := os.Stat(fname); err != nil {
+			certsInjected = false
+			break
+		}
+	}
+	if certsInjected {
+		server := mgr.GetWebhookServer()
+		server.CertDir = WebhookCertDir
+		server.CertName = WebhookCertName
+		server.KeyName = WebhookKeyName
+
+	} else {
+		poisonpillconfiglog.Info("OLM injected certs for webhooks not found")
+	}
+
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
 		Complete()
@@ -43,16 +83,14 @@ var _ webhook.Validator = &PoisonPillConfig{}
 func (r *PoisonPillConfig) ValidateCreate() error {
 	poisonpillconfiglog.Info("validate create", "name", r.Name)
 
-	// TODO(user): fill in your validation logic upon object creation.
-	return nil
+	return r.ValidateTimes()
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *PoisonPillConfig) ValidateUpdate(old runtime.Object) error {
 	poisonpillconfiglog.Info("validate update", "name", r.Name)
 
-	// TODO(user): fill in your validation logic upon object update.
-	return nil
+	return r.ValidateTimes()
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
@@ -61,4 +99,36 @@ func (r *PoisonPillConfig) ValidateDelete() error {
 
 	// TODO(user): fill in your validation logic upon object deletion.
 	return nil
+}
+
+// ValidateTimes validates that each time field in the PoisonPillConfig CR isn't smaller than the minimum time allowed
+func (r *PoisonPillConfig) ValidateTimes() error {
+
+	peerApiServerTimeout := r.Spec.PeerApiServerTimeout.Milliseconds()
+	apiServerTimeout := r.Spec.ApiServerTimeout.Milliseconds()
+	peerDialTimeout := r.Spec.PeerDialTimeout.Milliseconds()
+	peerRequestTimeout := r.Spec.PeerRequestTimeout.Milliseconds()
+	apiCheckInterval := r.Spec.ApiCheckInterval.Milliseconds()
+	peerUpdateInterval := r.Spec.PeerUpdateInterval.Milliseconds()
+
+	if peerApiServerTimeout < 10 {
+		LogAndReturnErr(ErrPeerApiServerTimeout, peerApiServerTimeout)
+	} else if apiServerTimeout < 10 {
+		LogAndReturnErr(ErrApiServerTimeout, apiServerTimeout)
+	} else if peerDialTimeout < 10 {
+		LogAndReturnErr(ErrPeerDialTimeout, peerDialTimeout)
+	} else if peerRequestTimeout < 10 {
+		LogAndReturnErr(ErrPeerRequestTimeout, peerRequestTimeout)
+	} else if apiCheckInterval < 1000 {
+		LogAndReturnErr(ErrApiCheckInterval, apiCheckInterval)
+	} else if peerUpdateInterval < 10000 {
+		LogAndReturnErr(ErrPeerUpdateInterval, peerUpdateInterval)
+	}
+	return nil
+}
+
+func LogAndReturnErr(errMessage string, inputTime int64) error {
+	err := fmt.Errorf(errMessage)
+	poisonpillconfiglog.Error(err, errMessage, "time given (in milliseconds) was:", inputTime)
+	return err
 }
