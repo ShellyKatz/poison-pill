@@ -33,13 +33,13 @@ const (
 )
 
 const (
-	ErrLessThan10ms = "can't be less than 10 milliseconds"
-	ErrPeerApiServerTimeout = "PeerApiServerTimeout" + ErrLessThan10ms
-	ErrApiServerTimeout = "ApiServerTimeout" + ErrLessThan10ms
-	ErrPeerDialTimeout = "PeerDialTimeout" +  ErrLessThan10ms
-	ErrPeerRequestTimeout = "PeerRequestTimeout" + ErrLessThan10ms
-	ErrApiCheckInterval = "ApiCheckInterval can't be less than 1 seconds"
-	ErrPeerUpdateInterval = "PeerUpdateInterval can't be less than 10 seconds"
+	ErrLessThan10ms         = "can't be less than 10 milliseconds"
+	ErrPeerApiServerTimeout = "PeerApiServerTimeout " + ErrLessThan10ms
+	ErrApiServerTimeout     = "ApiServerTimeout " + ErrLessThan10ms
+	ErrPeerDialTimeout      = "PeerDialTimeout " + ErrLessThan10ms
+	ErrPeerRequestTimeout   = "PeerRequestTimeout " + ErrLessThan10ms
+	ErrApiCheckInterval     = "ApiCheckInterval can't be less than 1 seconds"
+	ErrPeerUpdateInterval   = "PeerUpdateInterval can't be less than 10 seconds"
 )
 
 // log is for logging in this package.
@@ -109,7 +109,6 @@ func (r *PoisonPillConfig) ValidateDelete() error {
 //PeerDialTimeout - 10ms
 //PeerRequestTimeout - 10ms
 
-
 // ValidateTimes validates each time field in the PoisonPillConfig CR doesn't go below the minimum time
 // that was defined to it
 func (r *PoisonPillConfig) ValidateTimes() error {
@@ -119,19 +118,19 @@ func (r *PoisonPillConfig) ValidateTimes() error {
 	peerRequestTimeout := r.Spec.PeerRequestTimeout.Milliseconds()
 	apiCheckInterval := r.Spec.ApiCheckInterval.Milliseconds()
 	peerUpdateInterval := r.Spec.PeerUpdateInterval.Milliseconds()
-	poisonpillconfiglog.Info("shelly's comment!", "peerUpdateInterval", peerUpdateInterval, "apiCheckInterval",apiCheckInterval)
+	poisonpillconfiglog.Info("shelly's comment!", "peerUpdateInterval", peerUpdateInterval, "apiCheckInterval", apiCheckInterval)
 	if peerApiServerTimeout < 10 {
-		LogAndReturnErr(ErrPeerApiServerTimeout, peerApiServerTimeout)
+		return LogAndReturnErr(ErrPeerApiServerTimeout, peerApiServerTimeout)
 	} else if apiServerTimeout < 10 {
-		LogAndReturnErr(ErrApiServerTimeout, apiServerTimeout)
+		return LogAndReturnErr(ErrApiServerTimeout, apiServerTimeout)
 	} else if peerDialTimeout < 10 {
-		LogAndReturnErr(ErrPeerDialTimeout, peerDialTimeout)
+		return LogAndReturnErr(ErrPeerDialTimeout, peerDialTimeout)
 	} else if peerRequestTimeout < 10 {
-		LogAndReturnErr(ErrPeerRequestTimeout, peerRequestTimeout)
+		return LogAndReturnErr(ErrPeerRequestTimeout, peerRequestTimeout)
 	} else if apiCheckInterval < 1000 {
-		LogAndReturnErr(ErrApiCheckInterval, apiCheckInterval)
+		return LogAndReturnErr(ErrApiCheckInterval, apiCheckInterval)
 	} else if peerUpdateInterval < 10000 {
-		LogAndReturnErr(ErrPeerUpdateInterval, peerUpdateInterval)
+		return LogAndReturnErr(ErrPeerUpdateInterval, peerUpdateInterval)
 	}
 	return nil
 }
