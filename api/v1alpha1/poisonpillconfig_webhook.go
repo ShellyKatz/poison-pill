@@ -24,6 +24,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"time"
 )
 
 const (
@@ -32,14 +33,23 @@ const (
 	WebhookKeyName  = "apiserver.key"
 )
 
+//minimal time durations allowed
 const (
-	ErrLessThan10ms         = "can't be less than 10 milliseconds"
-	ErrPeerApiServerTimeout = "PeerApiServerTimeout " + ErrLessThan10ms
-	ErrApiServerTimeout     = "ApiServerTimeout " + ErrLessThan10ms
-	ErrPeerDialTimeout      = "PeerDialTimeout " + ErrLessThan10ms
-	ErrPeerRequestTimeout   = "PeerRequestTimeout " + ErrLessThan10ms
-	ErrApiCheckInterval     = "ApiCheckInterval can't be less than 1 seconds"
-	ErrPeerUpdateInterval   = "PeerUpdateInterval can't be less than 10 seconds"
+	MinDurPeerApiServerTimeout = "10ms"
+	MinDurApiServerTimeout = "10ms"
+	MinDurPeerDialTimeout = "10ms"
+	MinDurPeerRequestTimeout = "10ms"
+	MinDurApiCheckInterval = "1s"
+	MinDurPeerUpdateInterval = "10s"
+)
+
+const (
+	ErrPeerApiServerTimeout = "PeerApiServerTimeout " + MinDurPeerApiServerTimeout
+	ErrApiServerTimeout     = "ApiServerTimeout " + MinDurApiServerTimeout
+	ErrPeerDialTimeout      = "PeerDialTimeout " + MinDurPeerDialTimeout
+	ErrPeerRequestTimeout   = "PeerRequestTimeout " + MinDurPeerRequestTimeout
+	ErrApiCheckInterval     = "ApiCheckInterval can't be less than " + MinDurApiCheckInterval
+	ErrPeerUpdateInterval   = "PeerUpdateInterval can't be less than " + MinDurPeerUpdateInterval
 )
 
 // log is for logging in this package.
@@ -61,9 +71,6 @@ func (r *PoisonPillConfig) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		server.CertDir = WebhookCertDir
 		server.CertName = WebhookCertName
 		server.KeyName = WebhookKeyName
-		//TODO - delete this comment once working
-		poisonpillconfiglog.Info("injected! - Shelly's comment")
-
 	} else {
 		poisonpillconfiglog.Info("OLM injected certs for webhooks not found")
 	}
@@ -89,7 +96,6 @@ func (r *PoisonPillConfig) ValidateCreate() error {
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *PoisonPillConfig) ValidateUpdate(old runtime.Object) error {
 	poisonpillconfiglog.Info("validate update", "name", r.Name)
-	poisonpillconfiglog.Info("Shelly's comment", "name", r.Name)
 
 	return r.ValidateTimes()
 }
@@ -102,13 +108,6 @@ func (r *PoisonPillConfig) ValidateDelete() error {
 	return nil
 }
 
-//PeerApiServerTimeout - 10ms
-//ApiCheckInterval - 1s --> 1000ms
-//PeerUpdateInterval - 10s --> 10000ms
-//ApiServerTimeout - 10ms
-//PeerDialTimeout - 10ms
-//PeerRequestTimeout - 10ms
-
 // ValidateTimes validates each time field in the PoisonPillConfig CR doesn't go below the minimum time
 // that was defined to it
 func (r *PoisonPillConfig) ValidateTimes() error {
@@ -118,18 +117,17 @@ func (r *PoisonPillConfig) ValidateTimes() error {
 	peerRequestTimeout := r.Spec.PeerRequestTimeout.Milliseconds()
 	apiCheckInterval := r.Spec.ApiCheckInterval.Milliseconds()
 	peerUpdateInterval := r.Spec.PeerUpdateInterval.Milliseconds()
-	poisonpillconfiglog.Info("shelly's comment!", "peerUpdateInterval", peerUpdateInterval, "apiCheckInterval", apiCheckInterval)
-	if peerApiServerTimeout < 10 {
+	if peerApiServerTimeout < toMS(MinDurPeerApiServerTimeout) {
 		return LogAndReturnErr(ErrPeerApiServerTimeout, peerApiServerTimeout)
-	} else if apiServerTimeout < 10 {
+	} else if apiServerTimeout < toMS(MinDurApiServerTimeout) {
 		return LogAndReturnErr(ErrApiServerTimeout, apiServerTimeout)
-	} else if peerDialTimeout < 10 {
+	} else if peerDialTimeout < toMS(MinDurPeerDialTimeout) {
 		return LogAndReturnErr(ErrPeerDialTimeout, peerDialTimeout)
-	} else if peerRequestTimeout < 10 {
+	} else if peerRequestTimeout < toMS(MinDurPeerRequestTimeout) {
 		return LogAndReturnErr(ErrPeerRequestTimeout, peerRequestTimeout)
-	} else if apiCheckInterval < 1000 {
+	} else if apiCheckInterval < toMS(MinDurApiCheckInterval) {
 		return LogAndReturnErr(ErrApiCheckInterval, apiCheckInterval)
-	} else if peerUpdateInterval < 10000 {
+	} else if peerUpdateInterval < toMS(MinDurPeerUpdateInterval) {
 		return LogAndReturnErr(ErrPeerUpdateInterval, peerUpdateInterval)
 	}
 	return nil
@@ -141,4 +139,12 @@ func LogAndReturnErr(errMessage string, inputTime int64) error {
 	err := fmt.Errorf(errMessage)
 	poisonpillconfiglog.Error(err, errMessage, "time given (in milliseconds) was:", inputTime)
 	return err
+}
+
+func toMS(value string) int64 {
+	d, err := time.ParseDuration(value)
+	if err != nil {
+		//todo return error!
+	}
+	return d.Milliseconds()
 }

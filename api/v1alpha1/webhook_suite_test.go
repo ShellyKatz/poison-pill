@@ -21,6 +21,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -49,6 +50,12 @@ var testEnv *envtest.Environment
 var ctx context.Context
 var cancel context.CancelFunc
 
+const (
+	envVarApiServer = "TEST_ASSET_KUBE_APISERVER"
+	envVarETCD      = "TEST_ASSET_ETCD"
+	envVarKUBECTL   = "TEST_ASSET_KUBECTL"
+)
+
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
 
@@ -58,11 +65,23 @@ func TestAPIs(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
+
+	if _, isFound := os.LookupEnv(envVarApiServer); !isFound {
+		Expect(os.Setenv(envVarApiServer, "../../testbin/bin/kube-apiserver")).To(Succeed())
+	}
+	if _, isFound := os.LookupEnv(envVarETCD); !isFound {
+		Expect(os.Setenv(envVarETCD, "../../testbin/bin/etcd")).To(Succeed())
+	}
+	if _, isFound := os.LookupEnv(envVarKUBECTL); !isFound {
+		Expect(os.Setenv(envVarKUBECTL, "../../testbin/bin/kubectl")).To(Succeed())
+	}
+
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
 	ctx, cancel = context.WithCancel(context.TODO())
 
 	By("bootstrapping test environment")
+
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "config", "crd", "bases")},
 		ErrorIfCRDPathMissing: false,
