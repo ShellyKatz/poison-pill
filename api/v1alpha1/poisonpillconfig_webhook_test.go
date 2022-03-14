@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-type TestDataItems struct {
+type TestDataItem struct {
 	fieldName string
 	fieldValue string
 	fieldMinValue string
@@ -17,7 +17,7 @@ type TestDataItems struct {
 var _ = Describe("PoisonPillConfig Validation", func() {
 
 	Describe("validate time fields of PoisonPillConfig CR", func() {
-		shortTimeTestItems := []TestDataItems{
+		shortTimeTestItems := []TestDataItem{
 			{"PeerApiServerTimeout", "1.2ms", MinDurPeerApiServerTimeout, ErrPeerApiServerTimeout},
 			{"ApiServerTimeout", "1.2ms", MinDurApiServerTimeout, ErrApiServerTimeout},
 			{"PeerDialTimeout", "1.2ms", MinDurPeerDialTimeout, ErrPeerDialTimeout},
@@ -41,7 +41,7 @@ var _ = Describe("PoisonPillConfig Validation", func() {
 			})
 		}
 
-		negativeTimeTestItems := []TestDataItems{
+		negativeTimeTestItems := []TestDataItem{
 			{"PeerApiServerTimeout", "-1ms", MinDurPeerApiServerTimeout, ErrPeerApiServerTimeout},
 			{"ApiServerTimeout", "-1ms", MinDurApiServerTimeout, ErrApiServerTimeout},
 			{"PeerDialTimeout", "-1ms", MinDurPeerDialTimeout, ErrPeerDialTimeout},

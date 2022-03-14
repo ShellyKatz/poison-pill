@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"fmt"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"os"
 	"path/filepath"
@@ -33,7 +34,7 @@ const (
 	WebhookKeyName  = "apiserver.key"
 )
 
-//minimal time durations allowed
+//minimal time durations allowed string format
 const (
 	MinDurPeerApiServerTimeout = "10ms"
 	MinDurApiServerTimeout = "10ms"
@@ -51,6 +52,12 @@ const (
 	ErrApiCheckInterval     = "ApiCheckInterval can't be less than " + MinDurApiCheckInterval
 	ErrPeerUpdateInterval   = "PeerUpdateInterval can't be less than " + MinDurPeerUpdateInterval
 )
+
+type field struct {
+	fieldDurValue *metav1.Duration
+	fieldMinValueString string
+	errorMessage string
+}
 
 // log is for logging in this package.
 var poisonpillconfiglog = logf.Log.WithName("poisonpillconfig-resource")
@@ -111,40 +118,46 @@ func (r *PoisonPillConfig) ValidateDelete() error {
 // ValidateTimes validates each time field in the PoisonPillConfig CR doesn't go below the minimum time
 // that was defined to it
 func (r *PoisonPillConfig) ValidateTimes() error {
-	peerApiServerTimeout := r.Spec.PeerApiServerTimeout.Milliseconds()
-	apiServerTimeout := r.Spec.ApiServerTimeout.Milliseconds()
-	peerDialTimeout := r.Spec.PeerDialTimeout.Milliseconds()
-	peerRequestTimeout := r.Spec.PeerRequestTimeout.Milliseconds()
-	apiCheckInterval := r.Spec.ApiCheckInterval.Milliseconds()
-	peerUpdateInterval := r.Spec.PeerUpdateInterval.Milliseconds()
-	if peerApiServerTimeout < toMS(MinDurPeerApiServerTimeout) {
-		return LogAndReturnErr(ErrPeerApiServerTimeout, peerApiServerTimeout)
-	} else if apiServerTimeout < toMS(MinDurApiServerTimeout) {
-		return LogAndReturnErr(ErrApiServerTimeout, apiServerTimeout)
-	} else if peerDialTimeout < toMS(MinDurPeerDialTimeout) {
-		return LogAndReturnErr(ErrPeerDialTimeout, peerDialTimeout)
-	} else if peerRequestTimeout < toMS(MinDurPeerRequestTimeout) {
-		return LogAndReturnErr(ErrPeerRequestTimeout, peerRequestTimeout)
-	} else if apiCheckInterval < toMS(MinDurApiCheckInterval) {
-		return LogAndReturnErr(ErrApiCheckInterval, apiCheckInterval)
-	} else if peerUpdateInterval < toMS(MinDurPeerUpdateInterval) {
-		return LogAndReturnErr(ErrPeerUpdateInterval, peerUpdateInterval)
+
+	s := r.Spec
+	fields := []field{
+		{s.PeerApiServerTimeout, MinDurPeerApiServerTimeout, ErrPeerApiServerTimeout},
+		{s.ApiServerTimeout, MinDurApiServerTimeout, ErrApiServerTimeout},
+		{s.PeerDialTimeout, MinDurPeerDialTimeout, ErrPeerDialTimeout},
+		{s.PeerRequestTimeout, MinDurPeerRequestTimeout, ErrPeerRequestTimeout},
+		{s.ApiCheckInterval, MinDurApiCheckInterval, ErrApiCheckInterval},
+		{s.PeerUpdateInterval, MinDurPeerUpdateInterval, ErrPeerUpdateInterval},
 	}
+
+	for _, f := range fields {
+		err := checkField(f.fieldDurValue.Milliseconds(), f.fieldMinValueString, f.errorMessage)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
-// LogAndReturnErr logs the time error with the inputTime as value for the user to see what was inserted
-// and then returns the error.
-func LogAndReturnErr(errMessage string, inputTime int64) error {
-	err := fmt.Errorf(errMessage)
-	poisonpillconfiglog.Error(err, errMessage, "time given (in milliseconds) was:", inputTime)
-	return err
+func checkField(inputTime int64, minValidDur string, errMessage string) error {
+	minValidDurMS, err := toMS(minValidDur)
+	if err != nil {
+		return err
+	}
+
+	if inputTime < minValidDurMS {
+		err := fmt.Errorf(errMessage)
+		poisonpillconfiglog.Error(err, errMessage, "time given (in milliseconds) was:", inputTime)
+		return err
+	}
+
+	return nil
 }
 
-func toMS(value string) int64 {
+func toMS(value string) (int64, error) {
 	d, err := time.ParseDuration(value)
 	if err != nil {
-		//todo return error!
+		return 0, err
 	}
-	return d.Milliseconds()
+	return d.Milliseconds(), nil
 }
